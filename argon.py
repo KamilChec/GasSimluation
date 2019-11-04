@@ -70,36 +70,109 @@ class Argon:
             particle.set_p(np.subtract(momentum, P / self.N))
         return particles
 
+    def V_s(self, particle):
+        normalised_r = np.linalg.norm(particle.r)
+        if normalised_r >= self.L:
+            return 1/2 * self.f * (normalised_r - self.L)**2
+        else:
+            return 0
+
+    def F_s(self, particle):
+        normalised_r = np.linalg.norm(particle.r)
+        if normalised_r >= self.L:
+            return np.dot(self.f * ((self.L - normalised_r) / normalised_r), particle.r)
+        else:
+            return 0
+
+    def P_temp(self, F_s):
+        return 1/(4 * math.pi * self.L**2) * np.linalg.norm(F_s)
+
+    def V_p(self, particle_A, particle_B):
+        normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
+        return self.epsilon * ((self.R / normalised_rij)**12 - 2 * (self.R / normalised_rij)**6)
+
+    def F_p(self, particle_A, particle_B):
+        normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
+        return np.dot(12 * self.epsilon * ((self.R/normalised_rij)**12 - 2 * (self.R/normalised_rij)**6) /
+                      normalised_rij**2, np.subtract(particle_A.r, particle_B.r))
+
+    def count_F_V_P(self, state):
+        state.set_V(0)
+        state.set_P(0)
+        state.resetting_F(self.N)
+        V = 0
+        P = 0
+        F = []
+        for i in range(self.N):
+            V += self.V_s(state.particles[i])
+            F_s = self.F_s(state.particles[i])
+            F.append(F_s)
+            P += self.P_temp(F_s)
+            for j in range(i):
+                V += self.V_p(state.particles[i], state.particles[j])
+                F[i] += self.F_p(state.particles[i], state.particles[j])
+                F[j] -= self.F_p(state.particles[i], state.particles[j])
+        print(np.shape(F))
+        print(F[:3])
+        print(V)
+        print(P)
+        state.set_V(V)
+        state.set_P(P)
+        state.set_F(F, self.N)
 
 class State(Argon):
-    def __init__(self, V, P, H, T):
+    def __init__(self, particles, V=0, P=0, H=0, T=0):
         self.T = T
         self.H = H
         self.P = P
         self.V = V
+        self.particles = particles
 
+    def set_V(self, V):
+        self.V = V
+
+    def set_P(self, P):
+        self.P = P
+
+    def set_F(self, F, N):
+        self.F = F
+        for i in range(N):
+            self.particles[i].set_F(F[i])
+
+    def resetting_F(self, N):
+        for i in range(N):
+            self.particles[i].set_F(np.zeros([1, 3]))
 
 class Particle(State):
-    def __init__(self, r, p=0):
+    def __init__(self, r, p=0, F=0):
         self.r = r
         self.p = p
+        self.F = F
 
     def set_p(self, p):
         self.p = p
 
+    def set_F(self, F):
+        self.F = F
+
+    def F(self):
+        return [self.F[0], self.F[1], self.F[2]]
+
     def r(self):
-        return [self.x, self.y, self.z]
+        return [self.r[0], self.r[1], self.r[2]]
 
 
 def main():
     try:
         sys.argv[1], sys.argv[2]
-    except IndexError as error:
-        print("insert arguments")
+    except IndexError:
+        print("insert files into arguments")
+        return 0
     argon = Argon()
     argon.read_parameters(sys.argv[1])
-    particles = argon.start_position()
-    argon.print_particles(sys.argv[2], particles, first_use=True)
+    state = State(particles=argon.start_position())
+    argon.print_particles(sys.argv[2], state.particles, first_use=True)
+    argon.count_F_V_P(state)
 
 
 if __name__ == "__main__":

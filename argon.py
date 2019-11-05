@@ -9,6 +9,8 @@ class Argon:
     N = 0
     k = 8.31 * 10 ** (-3)
     T0 = 273
+    s_out = 10
+    s_xyz = 10
 
     def __init__(self, n=8, m=40, epsilon=1, R=0.38, f=10000, L=2.3, a=0.38, tau=0.002, s_o=100, s_d=2000):
         self.s_d = s_d
@@ -56,17 +58,17 @@ class Argon:
         for i0 in range(self.n):
             for i1 in range(self.n):
                 for i2 in range(self.n):
-                    r = np.dot(i0 - const, b0) + np.dot(i1 - const, b1) + np.dot(i2 - const, b2)
+                    r = np.asarray(np.dot(i0 - const, b0) + np.dot(i1 - const, b1) + np.dot(i2 - const, b2))
                     particles.append(Particle(r))
         p = []
-        P = np.zeros([1, 3])
+        P = [0, 0, 0]
         for i in range(self.N):
-            vec_p = []
+            vec_p = [0, 0, 0]
             for q in range(3):
                 kinetic_energy = -1 / 2. * self.k * self.T0 * math.log(random.random())
-                vec_p.append((random.choice([-1, 1]) * 2 * math.sqrt(2 * self.m * kinetic_energy)))
+                vec_p[q] = (random.choice([-1, 1]) * 2 * math.sqrt(2 * self.m * kinetic_energy))
             p.append(vec_p)
-            P += vec_p
+            P += np.asarray(vec_p)
         for momentum, particle in zip(p, particles):
             particle.set_p(np.subtract(momentum, P / self.N))
         return particles
@@ -74,7 +76,7 @@ class Argon:
     def V_s(self, particle):
         normalised_r = np.linalg.norm(particle.r)
         if normalised_r >= self.L:
-            return 1/2 * self.f * (normalised_r - self.L)**2
+            return 1 / 2 * self.f * (normalised_r - self.L) ** 2
         else:
             return 0
 
@@ -86,16 +88,16 @@ class Argon:
             return 0
 
     def P_temp(self, F_s):
-        return 1/(4 * math.pi * self.L**2) * np.linalg.norm(F_s)
+        return 1 / (4 * math.pi * self.L ** 2) * np.linalg.norm(F_s)
 
     def V_p(self, particle_A, particle_B):
         normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
-        return self.epsilon * ((self.R / normalised_rij)**12 - 2 * (self.R / normalised_rij)**6)
+        return self.epsilon * ((self.R/normalised_rij)**12 - 2 * (self.R / normalised_rij) ** 6)
 
     def F_p(self, particle_A, particle_B):
         normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
-        return np.dot(12 * self.epsilon * ((self.R/normalised_rij)**12 - 2 * (self.R/normalised_rij)**6) /
-                      normalised_rij**2, np.subtract(particle_A.r, particle_B.r))
+        return np.dot(12 * self.epsilon * ((self.R/normalised_rij) ** 12 - (self.R/normalised_rij) ** 6) /
+                      normalised_rij ** 2, np.subtract(particle_A.r, particle_B.r))
 
     def count_F_V_P(self, state):
         state.set_V(0)
@@ -104,8 +106,7 @@ class Argon:
         V = 0
         P = 0
         F = []
-        for i in tqdm(range(self.N)):
-            print("", end='\r')
+        for i in range(self.N):
             V += self.V_s(state.particles[i])
             F_s = self.F_s(state.particles[i])
             F.append(F_s)
@@ -116,7 +117,62 @@ class Argon:
                 F[j] -= self.F_p(state.particles[i], state.particles[j])
         state.set_V(V)
         state.set_P(P)
-        state.set_F(F, self.N)
+        for i in range(self.N):
+            # print(state.particles[i].F)
+            state.particles[i].set_F(F[i])
+            # print(state.particles[i].F)
+
+    def count_T(self, state):
+        kinetic_energy = 0
+        for i in range(self.N):
+            kinetic_energy += (np.linalg.norm(state.particles[i].p)) ** 2 / (2 * self.m)
+        return 2. / (3 * self.N * self.k) * kinetic_energy
+
+    def count_H(self, state):
+        kinetic_energy = 0
+        for i in range(self.N):
+            kinetic_energy += (np.linalg.norm(state.particles[i].p)) ** 2 / (2 * self.m)
+        return kinetic_energy + state.V
+
+    def save_state(self, file, state, first_use):
+        if first_use:
+            out_file = open(file, "w")
+            out_file.write("Energy" + '\t' + "Potential" + '\t' + "Temperature" + '\t' + "Pressure" + "\n")
+            out_file.write(str(state.H) + '\t' + str(state.V) + '\t' + str(state.T) + '\t' + str(state.P) + "\n")
+        else:
+            out_file = open(file, "a")
+            out_file.write(str(state.H) + '\t' + str(state.V) + '\t' + str(state.T) + '\t' + str(state.P) + "\n")
+        out_file.close()
+
+    def simulation(self, state):
+        average_H = average_T = average_P = 0
+        for s in tqdm(range(int(self.s_o + self.s_d))):
+            print("", end='\r')
+            for i in range(self.N):
+                p_halfTau = np.add(np.transpose(state.particles[i].p), np.dot((self.tau * 0.5), state.particles[i].F))
+                r = np.add(state.particles[i].r, np.dot(self.tau * 1. / self.m, p_halfTau))
+                state.particles[i].set_r(r)
+            self.count_F_V_P(state)
+            for i in range(self.N):
+                state.particles[i].set_p(np.add(p_halfTau, np.dot(self.tau * 0.5, state.particles[i].F)))
+            state.set_T(self.count_T(state))
+            state.set_H(self.count_H(state))
+            if s % self.s_out == 0:
+                if s == 0:
+                    self.save_state("state.txt", state, first_use=True)
+                else:
+                    self.save_state("state.txt", state, first_use=False)
+            if s % self.s_xyz == 0:
+                self.print_particles(sys.argv[2], state.particles, first_use=False)
+            if s >= self.s_o:
+                average_T += state.T
+                average_H += state.H
+                average_P += state.P
+        average_P /= (self.s_o + self.s_d)
+        average_H /= (self.s_o + self.s_d)
+        average_T /= (self.s_o + self.s_d)
+        print("Average value of:" + '\n' + "Energy: " + str(average_H) + '\t' + "Pressure: " + str(
+            average_P) + '\t' + "Temperature: " + str(average_T))
 
 
 class State(Argon):
@@ -127,20 +183,27 @@ class State(Argon):
         self.V = V
         self.particles = particles
 
+    def set_T(self, T):
+        self.T = T
+
+    def set_H(self, H):
+        self.H = H
+
     def set_V(self, V):
         self.V = V
 
     def set_P(self, P):
         self.P = P
 
-    def set_F(self, F, N):
-        self.F = F
-        for i in range(N):
-            self.particles[i].set_F(F[i])
+    # def set_F(self, F, N):
+    #     self.F = F
+    #     for i in range(N):
+    #         self.particles[i].set_F(np.transpose(F[i]))
 
     def resetting_F(self, N):
         for i in range(N):
             self.particles[i].set_F(np.zeros([1, 3]))
+
 
 class Particle(State):
     def __init__(self, r, p=0, F=0):
@@ -153,6 +216,9 @@ class Particle(State):
 
     def set_F(self, F):
         self.F = F
+
+    def set_r(self, r):
+        self.r = r
 
     def F(self):
         return [self.F[0], self.F[1], self.F[2]]
@@ -172,6 +238,7 @@ def main():
     state = State(particles=argon.start_position())
     argon.print_particles(sys.argv[2], state.particles, first_use=True)
     argon.count_F_V_P(state)
+    argon.simulation(state)
 
 
 if __name__ == "__main__":

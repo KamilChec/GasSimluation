@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 
 class Argon:
     N = 0
-    k = 8.31 * 10 ** (-3)
+    k = 8.31 * 10**(-3)
     T0 = 273
     s_out = 10
     s_xyz = 10
@@ -66,8 +66,8 @@ class Argon:
         for i in range(self.N):
             vec_p = [0, 0, 0]
             for q in range(3):
-                kinetic_energy = -1 / 2. * self.k * self.T0 * math.log(random.random())
-                vec_p[q] = (random.choice([-1, 1]) * 2 * math.sqrt(2 * self.m * kinetic_energy))
+                kinetic_energy = -0.5 * self.k * self.T0 * math.log(random.random())
+                vec_p[q] = (random.choice([-1, 1]) * math.sqrt(2 * self.m * kinetic_energy))
             p.append(vec_p)
             P += np.asarray(vec_p)
         for momentum, particle in zip(p, particles):
@@ -77,7 +77,7 @@ class Argon:
     def V_s(self, particle):
         normalised_r = np.linalg.norm(particle.r)
         if normalised_r >= self.L:
-            return 1 / 2 * self.f * (normalised_r - self.L) ** 2
+            return 0.5 * self.f * (normalised_r - self.L)**2
         else:
             return 0
 
@@ -89,16 +89,16 @@ class Argon:
             return 0
 
     def P_temp(self, F_s):
-        return 1 / (4 * math.pi * self.L ** 2) * np.linalg.norm(F_s)
+        return 1 / (4 * math.pi * self.L**2) * np.linalg.norm(F_s)
 
     def V_p(self, particle_A, particle_B):
         normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
-        return self.epsilon * ((self.R/normalised_rij)**12 - 2 * (self.R / normalised_rij) ** 6)
+        return self.epsilon * ((self.R/normalised_rij)**12 - 2 * (self.R/normalised_rij)**6)
 
     def F_p(self, particle_A, particle_B):
         normalised_rij = np.linalg.norm(np.subtract(particle_A.r, particle_B.r))
-        return np.dot(12 * self.epsilon * ((self.R/normalised_rij) ** 12 - (self.R/normalised_rij) ** 6) /
-                      normalised_rij ** 2, np.subtract(particle_A.r, particle_B.r))
+        return np.dot(12 * self.epsilon * ((self.R/normalised_rij)**12 - (self.R/normalised_rij)**6) /
+                      normalised_rij**2, np.subtract(particle_A.r, particle_B.r))
 
     def count_F_V_P(self, state):
         state.set_V(0)
@@ -119,14 +119,12 @@ class Argon:
         state.set_V(V)
         state.set_P(P)
         for i in range(self.N):
-            # print(state.particles[i].F)
             state.particles[i].set_F(F[i])
-            # print(state.particles[i].F)
 
     def count_T(self, state):
         kinetic_energy = 0
         for i in range(self.N):
-            kinetic_energy += (np.linalg.norm(state.particles[i].p)) ** 2 / (2 * self.m)
+            kinetic_energy += (np.linalg.norm(state.particles[i].p))**2 / (2 * self.m)
         return 2. / (3 * self.N * self.k) * kinetic_energy
 
     def count_H(self, state):
@@ -151,7 +149,7 @@ class Argon:
             print("", end='\r')
             for i in range(self.N):
                 p_halfTau = np.add(np.transpose(state.particles[i].p), np.dot((self.tau * 0.5), state.particles[i].F))
-                r = np.add(state.particles[i].r, np.dot(self.tau * 1. / self.m, p_halfTau))
+                r = np.add(state.particles[i].r, np.dot(self.tau / self.m, p_halfTau))
                 state.particles[i].set_r(r)
             self.count_F_V_P(state)
             for i in range(self.N):
@@ -195,11 +193,6 @@ class State(Argon):
 
     def set_P(self, P):
         self.P = P
-
-    # def set_F(self, F, N):
-    #     self.F = F
-    #     for i in range(N):
-    #         self.particles[i].set_F(np.transpose(F[i]))
 
     def resetting_F(self, N):
         for i in range(N):

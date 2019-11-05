@@ -2,6 +2,7 @@ import numpy as np
 import sys
 import math
 import random
+from tqdm.auto import tqdm
 
 
 class Argon:
@@ -103,7 +104,8 @@ class Argon:
         V = 0
         P = 0
         F = []
-        for i in range(self.N):
+        for i in tqdm(range(self.N)):
+            print("", end='\r')
             V += self.V_s(state.particles[i])
             F_s = self.F_s(state.particles[i])
             F.append(F_s)
@@ -112,13 +114,10 @@ class Argon:
                 V += self.V_p(state.particles[i], state.particles[j])
                 F[i] += self.F_p(state.particles[i], state.particles[j])
                 F[j] -= self.F_p(state.particles[i], state.particles[j])
-        print(np.shape(F))
-        print(F[:3])
-        print(V)
-        print(P)
         state.set_V(V)
         state.set_P(P)
         state.set_F(F, self.N)
+
 
 class State(Argon):
     def __init__(self, particles, V=0, P=0, H=0, T=0):

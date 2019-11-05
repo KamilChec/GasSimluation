@@ -44,6 +44,7 @@ class Argon:
             out_file.write(str(self.N) + 2 * "\n")
         else:
             out_file = open(file, "a")
+            out_file.write(str(self.N) + 2 * "\n")
         for particle in particles:
             out_file.write("Ar " + str(particle.r[0]) + " " + str(particle.r[1]) + " " + str(particle.r[2]) + "\n")
         out_file.close()

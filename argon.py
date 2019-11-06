@@ -149,11 +149,12 @@ class Argon:
             print("", end='\r')
             for i in range(self.N):
                 p_halfTau = np.add(state.particles[i].p, np.dot((self.tau * 0.5), state.particles[i].F))
+                state.particles[i].set_p(p_halfTau)
                 r = np.add(state.particles[i].r, np.dot(self.tau / self.m, p_halfTau))
                 state.particles[i].set_r(r)
             self.count_F_V_P(state)
             for i in range(self.N):
-                state.particles[i].set_p(np.add(p_halfTau, np.dot(self.tau * 0.5, state.particles[i].F)))
+                state.particles[i].set_p(np.add(state.particles[i].p, np.dot(self.tau * 0.5, state.particles[i].F)))
             state.set_T(self.count_T(state))
             state.set_H(self.count_H(state))
             if s % self.s_out == 0:

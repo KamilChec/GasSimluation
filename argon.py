@@ -50,7 +50,7 @@ class Argon:
         out_file.close()
 
     def start_position(self):
-        particles = []
+        par = []
         b0 = [self.a, 0, 0]
         b1 = [self.a / 2., self.a * np.sqrt(3) / 2., 0]
         b2 = [self.a / 2., self.a * np.sqrt(3) / 6., self.a * np.sqrt(2. / 3.)]
@@ -60,7 +60,7 @@ class Argon:
             for i1 in range(self.n):
                 for i2 in range(self.n):
                     r = np.asarray(np.dot(i0 - const, b0) + np.dot(i1 - const, b1) + np.dot(i2 - const, b2))
-                    particles.append(Particle(r))
+                    par.append(Particle(r))
         p = []
         P = [0, 0, 0]
         for i in range(self.N):
@@ -70,9 +70,9 @@ class Argon:
                 vec_p[q] = (random.choice([-1, 1]) * math.sqrt(2 * self.m * kinetic_energy))
             p.append(vec_p)
             P += np.asarray(vec_p)
-        for momentum, particle in zip(p, particles):
+        for momentum, particle in zip(p, par):
             particle.set_p(np.subtract(momentum, P / self.N))
-        return particles
+        return par
 
     def V_s(self, particle):
         normalised_r = np.linalg.norm(particle.r)

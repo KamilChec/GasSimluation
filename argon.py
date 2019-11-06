@@ -148,7 +148,7 @@ class Argon:
         for s in tqdm(range(int(self.s_o + self.s_d))):
             print("", end='\r')
             for i in range(self.N):
-                p_halfTau = np.add(np.transpose(state.particles[i].p), np.dot((self.tau * 0.5), state.particles[i].F))
+                p_halfTau = np.add(state.particles[i].p, np.dot((self.tau * 0.5), state.particles[i].F))
                 r = np.add(state.particles[i].r, np.dot(self.tau / self.m, p_halfTau))
                 state.particles[i].set_r(r)
             self.count_F_V_P(state)

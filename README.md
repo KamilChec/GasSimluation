@@ -3,8 +3,9 @@
 Program dynamiki molekularnej gazu Argonu
 
 ## Uruchomienie
-Do uruchumienia należy pierw mieć już zainstalowane moduły: numpy, tqdm dla Pythona
-Skrypt uruchamiamy dodając w pierwszym argumencie plik inp.txt oraz out.txt
+Do uruchumienia należy pierw mieć już zainstalowane moduły: numpy, tqdm dla Pythona.
+
+Skrypt uruchamiamy dodając w pierwszym argumencie plik inp.txt oraz out.txt.
 
 ## Input
 Parametry w inpucie to kolejno: 
